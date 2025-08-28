@@ -1,0 +1,4 @@
+2025-08-22 07:29:48,140 - db_helper -INFO - fetch_expenses_for_date called with 2024-08-01
+2025-08-22 07:30:05,898 - db_helper -INFO - fetch_expenses_for_date called with 2024-08-28
+2025-08-22 07:31:06,928 - db_helper -INFO - delete_expenses_for_date called with 2024-08-01
+2025-08-22 07:31:06,937 - db_helper -INFO - insert_expenses called with date:2024-08-01, amount:25.0, category: vehicle, notes: buy mercidies

@@ -1,0 +1,21 @@
+2025-08-26 23:29:39,387 - db_helper -INFO - Fetch year for given date 2024
+2025-08-26 23:34:27,348 - db_helper -INFO - Fetch year for given date 2024
+2025-08-26 23:35:10,714 - db_helper -INFO - Fetch year for given date 2024
+2025-08-26 23:35:59,176 - db_helper -INFO - Fetch year for given date 2024-08-05
+2025-08-26 23:37:27,922 - db_helper -INFO - Fetch year for given date 2024-08-05
+2025-08-26 23:38:25,772 - db_helper -INFO - Fetch year for given date 2024-08-05
+2025-08-26 23:41:02,386 - db_helper -INFO - get_expenses_for_year called with 2024
+2025-08-26 23:41:08,721 - db_helper -INFO - get_expenses_for_year called with 2024
+2025-08-26 23:41:54,437 - db_helper -INFO - get_expenses_for_year called with 2024
+2025-08-26 23:44:39,335 - db_helper -INFO - get_expenses_for_year called with 2024
+2025-08-26 23:45:04,599 - db_helper -INFO - get_expenses_for_year called with 2024
+2025-08-26 23:45:08,867 - db_helper -INFO - get_expenses_for_year called with 2024
+2025-08-26 23:45:30,817 - db_helper -INFO - get_expenses_for_year called with 2024
+2025-08-26 23:46:43,434 - db_helper -INFO - get_expenses_for_year called with 2024
+2025-08-26 23:46:43,486 - db_helper -INFO - Fetched56 rows for year 2024
+2025-08-26 23:49:20,040 - db_helper -INFO - get_expenses_for_year called with 2024
+2025-08-26 23:49:20,155 - db_helper -INFO - Fetched56 rows for year 2024
+2025-08-26 23:57:26,764 - db_helper -INFO - get_expenses_for_year called with 2024-08-12
+2025-08-27 00:03:47,922 - db_helper -INFO - get_expense_for_year called with 2024
+2025-08-27 00:04:09,874 - db_helper -INFO - get_expense_for_year called with 2024
+2025-08-28 17:10:58,367 - db_helper -INFO - fetch_expenses_for_date called with 2024-08-01
