@@ -13,7 +13,7 @@ This project is an expense management system that consists of PYTHON PROGRAMMING
 
 1. **Clone the repository**:
     ```bash
-    git clone https://github.com/rschaurasiya/expense-management
+    git clone https://github.com/rschaurasiya/Expense-management
     cd expense-management-system
     ```
 2. **Install dependencies**:
@@ -27,4 +27,5 @@ This project is an expense management system that consists of PYTHON PROGRAMMING
 4. **Run the Sreamlit app**:
     ```commandline
     streamlit run fronted/app.py
+
     ```
