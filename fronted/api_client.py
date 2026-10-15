@@ -1,7 +1,7 @@
 import os
 import sys
+from datetime import datetime
 import requests
-from backend import db_helper
 
 _CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 _PROJECT_ROOT = os.path.dirname(_CURRENT_DIR) if os.path.basename(_CURRENT_DIR) == "fronted" else _CURRENT_DIR
@@ -10,6 +10,35 @@ _BACKEND_DIR = os.path.join(_PROJECT_ROOT, "backend")
 for p in [_PROJECT_ROOT, _BACKEND_DIR, _CURRENT_DIR]:
     if p not in sys.path:
         sys.path.insert(0, p)
+
+import importlib
+
+try:
+    from backend import db_helper
+except (ImportError, KeyError):
+    import db_helper
+
+# Force reload db_helper if it lacks latest methods/attributes from previous cached module
+if not hasattr(db_helper, "normalize_date") or not hasattr(db_helper, "save_expenses_for_date"):
+    try:
+        db_helper = importlib.reload(db_helper)
+    except Exception:
+        pass
+
+def normalize_date(val) -> str:
+    """Normalize any date representation to YYYY-MM-DD string."""
+    if hasattr(val, "strftime"):
+        return val.strftime("%Y-%m-%d")
+    s = str(val).strip().replace("/", "-")
+    try:
+        dt = datetime.strptime(s, "%Y-%m-%d")
+        return dt.strftime("%Y-%m-%d")
+    except Exception:
+        return s
+
+# Ensure normalize_date is also present on db_helper
+if not hasattr(db_helper, "normalize_date"):
+    setattr(db_helper, "normalize_date", normalize_date)
 
 # Cached status for backend server to prevent repeated socket timeouts
 _BACKEND_STATUS = None
@@ -42,7 +71,7 @@ def is_backend_online(timeout: float = 0.3) -> bool:
     return _BACKEND_STATUS
 
 def fetch_expenses(selected_date):
-    date_str = db_helper.normalize_date(selected_date)
+    date_str = normalize_date(selected_date)
     api_url = get_api_url()
 
     if is_backend_online():
@@ -57,7 +86,7 @@ def fetch_expenses(selected_date):
     return records, "sqlite" if getattr(db_helper, "_DB_DIALECT", "sqlite") == "sqlite" else "mysql"
 
 def save_expenses(selected_date, expenses_list):
-    date_str = db_helper.normalize_date(selected_date)
+    date_str = normalize_date(selected_date)
     api_url = get_api_url()
 
     if is_backend_online():
@@ -71,15 +100,21 @@ def save_expenses(selected_date, expenses_list):
             pass
 
     try:
-        db_helper.save_expenses_for_date(date_str, expenses_list)
+        if hasattr(db_helper, "save_expenses_for_date"):
+            db_helper.save_expenses_for_date(date_str, expenses_list)
+        else:
+            db_helper.delete_expenses_for_date(date_str)
+            for exp in expenses_list:
+                db_helper.insert_expense(date_str, float(exp["amount"]), exp["category"], exp.get("notes", "") or "")
+
         storage_type = "sqlite" if getattr(db_helper, "_DB_DIALECT", "sqlite") == "sqlite" else "mysql"
         return True, "Expenses updated successfully in database.", storage_type
     except Exception as e:
         return False, f"Failed to save expenses: {e}", "database"
 
 def fetch_category_analytics(start_date, end_date):
-    start_str = db_helper.normalize_date(start_date)
-    end_str = db_helper.normalize_date(end_date)
+    start_str = normalize_date(start_date)
+    end_str = normalize_date(end_date)
     api_url = get_api_url()
 
     if is_backend_online():
@@ -120,4 +155,6 @@ def fetch_monthly_analytics(year):
     return data, "db"
 
 def get_available_years():
-    return db_helper.get_available_years()
+    if hasattr(db_helper, "get_available_years"):
+        return db_helper.get_available_years()
+    return [2026, 2024]

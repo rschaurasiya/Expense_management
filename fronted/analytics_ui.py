@@ -1,7 +1,11 @@
 from datetime import datetime
 import streamlit as st
 import pandas as pd
-import api_client
+
+try:
+    from fronted import api_client
+except (ImportError, KeyError):
+    import api_client
 
 def analytics_tab():
     st.subheader("Category-wise Expense Analytics")
