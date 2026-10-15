@@ -11,10 +11,16 @@ for path in [_ROOT_DIR, _FRONTED_DIR, _BACKEND_DIR]:
         sys.path.insert(0, path)
 
 import streamlit as st
-import api_client
-from add_update_ui import add_update_tab
-from analytics_ui import analytics_tab
-from analtics_month import analytics_by_month_tab
+try:
+    from fronted import api_client
+    from fronted.add_update_ui import add_update_tab
+    from fronted.analytics_ui import analytics_tab
+    from fronted.analtics_month import analytics_by_month_tab
+except ImportError:
+    import api_client
+    from add_update_ui import add_update_tab
+    from analytics_ui import analytics_tab
+    from analtics_month import analytics_by_month_tab
 
 # Page configuration
 st.set_page_config(

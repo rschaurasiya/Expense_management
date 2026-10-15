@@ -1,6 +1,9 @@
 import streamlit as st
 from datetime import datetime
-import api_client
+try:
+    from fronted import api_client
+except ImportError:
+    import api_client
 
 def add_update_tab():
     st.subheader("Add or Update Daily Expenses")

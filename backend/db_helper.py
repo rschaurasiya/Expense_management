@@ -157,10 +157,10 @@ def get_expenses_for_year(year):
                 CAST(strftime('%m', expense_date) AS INTEGER) AS month,
                 SUM(amount) AS total_expenses
             FROM expenses
-            WHERE strftime('%Y', expense_date) = %s
+            WHERE CAST(strftime('%Y', expense_date) AS INTEGER) = %s
             GROUP BY month
             ORDER BY month'''
-            cursor.execute(query, (str(year),))
+            cursor.execute(query, (int(year),))
         else:
             query = '''SELECT 
                 MONTH(expense_date) AS month,
