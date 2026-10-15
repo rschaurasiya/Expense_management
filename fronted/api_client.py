@@ -11,10 +11,8 @@ for p in [_PROJECT_ROOT, _BACKEND_DIR, _CURRENT_DIR]:
     if p not in sys.path:
         sys.path.insert(0, p)
 
-try:
-    from backend import db_helper
-except ImportError:
-    import db_helper
+from backend import db_helper
+
 
 
 def get_api_url() -> str:
