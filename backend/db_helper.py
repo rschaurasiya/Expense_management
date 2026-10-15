@@ -1,8 +1,8 @@
-# CRUD process is performed Here(Create Retrive Update Delete)
 import os
 import sys
 import json
 import sqlite3
+from datetime import datetime
 from contextlib import contextmanager
 import pandas as pd
 
@@ -14,8 +14,21 @@ from logging_setup import setup_Logger
 
 logger = setup_Logger("db_helper")
 
+# Cache database dialect after first check: 'mysql' or 'sqlite'
+_DB_DIALECT = None
+
+def normalize_date(val) -> str:
+    """Normalize any date representation to YYYY-MM-DD string."""
+    if hasattr(val, "strftime"):
+        return val.strftime("%Y-%m-%d")
+    s = str(val).strip().replace("/", "-")
+    try:
+        dt = datetime.strptime(s, "%Y-%m-%d")
+        return dt.strftime("%Y-%m-%d")
+    except Exception:
+        return s
+
 def _get_mysql_config():
-    # 1. Check Streamlit secrets if running inside Streamlit
     try:
         import streamlit as st
         if hasattr(st, "secrets") and "mysql" in st.secrets:
@@ -30,7 +43,6 @@ def _get_mysql_config():
     except Exception:
         pass
 
-    # 2. Check environment variables or default to local config
     return {
         "host": os.getenv("MYSQL_HOST", "localhost"),
         "user": os.getenv("MYSQL_USER", "root"),
@@ -52,7 +64,6 @@ def _init_sqlite_db(conn):
     ''')
     conn.commit()
 
-    # Check if empty, and seed sample data if available
     cursor.execute("SELECT COUNT(*) FROM expenses")
     count = cursor.fetchone()[0]
     if count == 0:
@@ -63,7 +74,7 @@ def _init_sqlite_db(conn):
                     samples = json.load(f)
                 cursor.executemany(
                     "INSERT INTO expenses (expense_date, amount, category, notes) VALUES (?, ?, ?, ?)",
-                    [(s["expense_date"], s["amount"], s["category"], s.get("notes", "")) for s in samples]
+                    [(normalize_date(s["expense_date"]), float(s["amount"]), s["category"], s.get("notes", "")) for s in samples]
                 )
                 conn.commit()
                 logger.info(f"Seeded SQLite with {len(samples)} sample records")
@@ -78,7 +89,6 @@ class SQLiteCursorWrapper:
     def execute(self, query, params=None):
         clean_query = query.replace("%s", "?")
         if params is not None:
-            # Convert date objects to string formatted YYYY-MM-DD
             converted = []
             for p in params:
                 if hasattr(p, "strftime"):
@@ -101,24 +111,49 @@ class SQLiteCursorWrapper:
 
 @contextmanager
 def get_db_cursor(commit=False):
-    dialect = "mysql"
+    global _DB_DIALECT
+    dialect = _DB_DIALECT
     connection = None
 
-    try:
-        import mysql.connector
-        cfg = _get_mysql_config()
-        connection = mysql.connector.connect(
-            host=cfg["host"],
-            user=cfg["user"],
-            password=cfg["password"],
-            database=cfg["database"],
-            port=cfg["port"],
-            connection_timeout=2
-        )
-        cursor = connection.cursor(dictionary=True)
-    except Exception as e:
-        logger.info(f"MySQL unavailable ({e}). Using SQLite fallback.")
-        dialect = "sqlite"
+    # If dialect is not yet determined, probe MySQL first
+    if dialect is None:
+        try:
+            import mysql.connector
+            cfg = _get_mysql_config()
+            connection = mysql.connector.connect(
+                host=cfg["host"],
+                user=cfg["user"],
+                password=cfg["password"],
+                database=cfg["database"],
+                port=cfg["port"],
+                connection_timeout=0.3
+            )
+            cursor = connection.cursor(dictionary=True)
+            _DB_DIALECT = "mysql"
+            dialect = "mysql"
+        except Exception:
+            # MySQL unavailable; permanently switch session to SQLite for zero latency
+            _DB_DIALECT = "sqlite"
+            dialect = "sqlite"
+
+    if dialect == "mysql" and connection is None:
+        try:
+            import mysql.connector
+            cfg = _get_mysql_config()
+            connection = mysql.connector.connect(
+                host=cfg["host"],
+                user=cfg["user"],
+                password=cfg["password"],
+                database=cfg["database"],
+                port=cfg["port"],
+                connection_timeout=1
+            )
+            cursor = connection.cursor(dictionary=True)
+        except Exception:
+            _DB_DIALECT = "sqlite"
+            dialect = "sqlite"
+
+    if dialect == "sqlite":
         db_path = os.path.join(_BACKEND_DIR, "expenses.db")
         connection = sqlite3.connect(db_path)
         connection.row_factory = sqlite3.Row
@@ -126,7 +161,6 @@ def get_db_cursor(commit=False):
         cursor = SQLiteCursorWrapper(connection.cursor())
 
     try:
-        # Attach dialect to cursor for custom SQL syntax branching if needed
         cursor.dialect = dialect
         yield cursor
         if commit:
@@ -143,24 +177,54 @@ def fetch_all_records():
         return expenses
 
 def fetch_expenses_for_date(expense_date):
-    date_str = str(expense_date)
+    date_str = normalize_date(expense_date)
     logger.info(f"fetch_expenses_for_date called with {date_str}")
     with get_db_cursor() as cursor:
         cursor.execute("SELECT * FROM expenses WHERE expense_date = %s", (date_str,))
         expenses = cursor.fetchall()
         return expenses
 
+def save_expenses_for_date(expense_date, expenses_list):
+    """Save expenses for a date in a single fast transaction."""
+    date_str = normalize_date(expense_date)
+    with get_db_cursor(commit=True) as cursor:
+        cursor.execute("DELETE FROM expenses WHERE expense_date = %s", (date_str,))
+        for exp in expenses_list:
+            amt = float(exp["amount"])
+            if amt > 0:
+                cursor.execute(
+                    "INSERT INTO expenses (expense_date, amount, category, notes) VALUES (%s, %s, %s, %s)",
+                    (date_str, amt, exp["category"], exp.get("notes", "") or "")
+                )
+
+def get_available_years():
+    """Retrieve all unique years present in the database."""
+    with get_db_cursor() as cursor:
+        if getattr(cursor, "dialect", "mysql") == "sqlite":
+            query = "SELECT DISTINCT CAST(SUBSTR(REPLACE(expense_date, '/', '-'), 1, 4) AS INTEGER) AS yr FROM expenses WHERE amount > 0 ORDER BY yr DESC"
+        else:
+            query = "SELECT DISTINCT YEAR(expense_date) AS yr FROM expenses WHERE amount > 0 ORDER BY yr DESC"
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        years = [int(r["yr"]) for r in rows if r.get("yr") is not None and str(r["yr"]).isdigit()]
+        curr = datetime.now().year
+        if curr not in years:
+            years.append(curr)
+        years.sort(reverse=True)
+        return years
+
 def get_expenses_for_year(year):
+    year_int = int(year)
     with get_db_cursor() as cursor:
         if getattr(cursor, "dialect", "mysql") == "sqlite":
             query = '''SELECT 
-                CAST(strftime('%m', expense_date) AS INTEGER) AS month,
+                CAST(SUBSTR(REPLACE(expense_date, '/', '-'), 6, 2) AS INTEGER) AS month,
                 SUM(amount) AS total_expenses
             FROM expenses
-            WHERE CAST(strftime('%Y', expense_date) AS INTEGER) = %s
+            WHERE CAST(SUBSTR(REPLACE(expense_date, '/', '-'), 1, 4) AS INTEGER) = %s
             GROUP BY month
             ORDER BY month'''
-            cursor.execute(query, (int(year),))
+            cursor.execute(query, (year_int,))
         else:
             query = '''SELECT 
                 MONTH(expense_date) AS month,
@@ -169,7 +233,7 @@ def get_expenses_for_year(year):
             WHERE YEAR(expense_date) = %s
             GROUP BY MONTH(expense_date)
             ORDER BY month'''
-            cursor.execute(query, (year,))
+            cursor.execute(query, (year_int,))
         rows = cursor.fetchall()
 
     if not rows:
@@ -190,24 +254,21 @@ def get_expenses_for_year(year):
     return df.to_dict(orient="records")
 
 def insert_expense(expense_date, amount, category, notes):
-    date_str = str(expense_date)
-    logger.info(f"insert_expenses called with date:{date_str}, amount:{amount}, category: {category}, notes: {notes}")
+    date_str = normalize_date(expense_date)
     with get_db_cursor(commit=True) as cursor:
         cursor.execute(
             "INSERT INTO expenses (expense_date, amount, category, notes) VALUES (%s, %s, %s, %s)",
-            (date_str, float(amount), category, notes)
+            (date_str, float(amount), category, notes or "")
         )
 
 def delete_expenses_for_date(expense_date):
-    date_str = str(expense_date)
-    logger.info(f"delete_expenses_for_date called with {date_str}")
+    date_str = normalize_date(expense_date)
     with get_db_cursor(commit=True) as cursor:
         cursor.execute("DELETE FROM expenses WHERE expense_date = %s", (date_str,))
 
 def fetch_expense_summary(start_date, end_date):
-    start_str = str(start_date)
-    end_str = str(end_date)
-    logger.info(f"fetch_expenses_for_summary called with start_date:{start_str}, end_date: {end_str}")
+    start_str = normalize_date(start_date)
+    end_str = normalize_date(end_date)
     with get_db_cursor() as cursor:
         cursor.execute(
             '''SELECT category, sum(amount) as total

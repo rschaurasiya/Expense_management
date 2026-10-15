@@ -18,40 +18,28 @@ from analtics_month import analytics_by_month_tab
 # Page configuration
 st.set_page_config(
     page_title="Expense Tracker",
-    page_icon="💸",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom header styling
-st.title("💸 Expense Management System")
+# Main title
+st.title("Expense Management System")
 
-# Check backend status in the sidebar
+# Minimal sidebar showing only essential status
 with st.sidebar:
-    st.header("⚙️ System Status")
+    st.markdown("### System Status")
     backend_online = api_client.is_backend_online()
     if backend_online:
-        st.success("🟢 FastAPI API: Connected")
+        st.success("FastAPI API: Connected")
         st.caption(f"Endpoint: {api_client.get_api_url()}")
     else:
-        st.info("🔵 Standalone Cloud Mode: Active")
-        st.caption("Running with direct database connection (MySQL / SQLite fallback).")
+        st.info("Database: SQLite Active")
 
-    st.divider()
-    st.markdown("### 📊 Features")
-    st.markdown("- **Daily Expenses**: Record & edit daily expenses")
-    st.markdown("- **Category Analytics**: Spending breakdown")
-    st.markdown("- **Monthly Trends**: Yearly distribution")
-
-    st.divider()
-    st.markdown("### ☁️ Deployment Info")
-    st.caption("Ready for Streamlit Community Cloud. Works out-of-the-box with automated database fallback or cloud MySQL.")
-
-# Streamlit tab creation
+# Clean tab creation without emojis
 tab1, tab2, tab3 = st.tabs([
-    "📝 Add / Update Expenses",
-    "📊 Analytics By Categories",
-    "📅 Analytics By Months"
+    "Add / Update Expenses",
+    "Analytics By Categories",
+    "Analytics By Months"
 ])
 
 # Tab 1: Add or Update

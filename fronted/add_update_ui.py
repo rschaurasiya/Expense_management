@@ -1,12 +1,13 @@
-import streamlit as st
+import time
 from datetime import datetime
+import streamlit as st
 import api_client
 
 def add_update_tab():
     st.subheader("Add or Update Daily Expenses")
     selected_date = st.date_input("Select Date", datetime(2024, 8, 1))
 
-    existing_expenses, source = api_client.fetch_expenses(selected_date)
+    existing_expenses, storage_source = api_client.fetch_expenses(selected_date)
 
     categories = ["Rent", "Food", "Shopping", "Entertainment", "glasses", "vehicle", "Other"]
 
@@ -51,12 +52,24 @@ def add_update_tab():
                 "notes": notes_input
             })
 
-        submit_button = st.form_submit_button("💾 Save Expenses")
+        submit_button = st.form_submit_button("Save Expenses")
         if submit_button:
             filtered_expense = [expense for expense in expenses if expense['amount'] > 0]
-            success, message, _ = api_client.save_expenses(selected_date, filtered_expense)
+
+            # Short progress bar indicating storage status
+            progress_holder = st.empty()
+            pbar = progress_holder.progress(20, text="Validating expense entries...")
+            time.sleep(0.08)
+            pbar.progress(60, text="Storing records in database...")
+
+            success, message, storage_used = api_client.save_expenses(selected_date, filtered_expense)
+
+            pbar.progress(100, text=f"Finished! Stored in {storage_used.upper()}.")
+            time.sleep(0.2)
+            progress_holder.empty()
+
             if success:
-                st.success(message)
+                st.success(f"{message} (Storage: {storage_used.upper()})")
                 st.rerun()
             else:
                 st.error(message)
