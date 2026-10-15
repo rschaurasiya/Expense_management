@@ -1,9 +1,17 @@
 # Expense Management System
 This project is an expense management system built with Python, MySQL, a FastAPI backend server, and a Streamlit frontend web application.
 
+![Expense Management System Architecture & Workflow](assets/workflow_diagram.jpg)
+
+## 🏗️ System Architecture & Workflow
+- **Frontend Layer (Streamlit)**: Interactive UI with tabs for daily expense recording, category breakdown visualizations, and monthly trend analysis.
+- **Backend API Layer (FastAPI)**: REST endpoints (`/expenses`, `/analytics`, `/health`) handling data validation, business logic, and request routing.
+- **Database & Storage Layer**: Dual-mode data persistence connecting to MySQL on `localhost:3306` (or cloud MySQL), with automatic SQLite fallback for standalone cloud deployment.
+
 ## Project Structure
-- **fronted/**: Streamlit web application (`app.py`, `add_update_ui.py`, `analytics_ui.py`, `analtics_month.py`).
-- **backend/**: FastAPI REST API (`server_check.py`, `db_helper.py`, `logging_setup.py`).
+- **assets/**: Contains architecture and workflow diagram assets.
+- **fronted/**: Streamlit web application (`app.py`, `add_update_ui.py`, `analytics_ui.py`, `analtics_month.py`, `api_client.py`).
+- **backend/**: FastAPI REST API (`server_check.py`, `db_helper.py`, `logging_setup.py`, `sample_expenses.json`).
 - **test/**: Pytest test suite for backend and database operations.
 - **requirements.txt**: Required Python dependencies.
 - **README.md**: Project overview and instructions.
