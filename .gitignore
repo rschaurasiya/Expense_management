@@ -1,0 +1,32 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Pytest / test cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+log_file
+server_check.log
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Streamlit secrets (keep personal credentials safe)
+.streamlit/secrets.toml
+
+# OS generated files
+.DS_Store
+Thumbs.db

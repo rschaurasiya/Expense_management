@@ -1,0 +1,71 @@
+import os
+import sys
+
+_BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+if _BACKEND_DIR not in sys.path:
+    sys.path.insert(0, _BACKEND_DIR)
+
+from fastapi import FastAPI, HTTPException
+from datetime import date
+import db_helper
+from typing import List 
+from pydantic import BaseModel
+
+class Expense(BaseModel):
+    amount: float
+    category: str
+    notes: str
+
+class DateRange(BaseModel):
+    start_date: date
+    end_date: date
+
+app = FastAPI(title="Expense Management System API")
+
+@app.get("/")
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "message": "Expense Management API is running"}
+
+@app.get("/expenses/{expense_date}", response_model=List[Expense])
+def get_expenses(expense_date: date):
+    # Take input
+    expenses = db_helper.fetch_expenses_for_date(expense_date) 
+    if expenses is None:
+        raise HTTPException(status_code=500, detail="Failed to retrieve expenses from the database")
+    return expenses
+
+@app.post("/expenses/{expense_date}")
+def add_or_update_expense(expense_date: date, expenses: List[Expense]):
+    db_helper.delete_expenses_for_date(expense_date)
+    for expense in expenses:
+        # Take input 
+        db_helper.insert_expense(expense_date, expense.amount, expense.category, expense.notes)
+
+    return {"message": "Expense recorded successfully"}   
+
+
+@app.get("/analytics/{year}")
+def get_yearly_analytics(year:int):
+    yearly_data=db_helper.get_expenses_for_year(year)
+    return{"year":year,"data":yearly_data}
+
+
+
+@app.post("/analytics/")
+def get_analytics(date_range:DateRange):
+    data=db_helper.fetch_expense_summary(date_range.start_date,date_range.end_date)
+    if data is None:
+        raise HTTPException(status_code=500,detail="Failed to retrive expense summary from the database")
+    
+    total=sum([row['total'] for row in data])
+
+    breakdown={}
+
+    for row in data:
+        percentage=(row["total"]/total)*100 if total !=0 else 0
+        breakdown[row["category"]]={
+            "total":row["total"],
+            "percentage":percentage
+        }
+    return breakdown
